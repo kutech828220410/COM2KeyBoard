@@ -8,9 +8,34 @@ using System.Reflection;
 using System.Threading;
 using Basic;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using WindowsInput;
+using WindowsInput.Native;
 namespace COM2KeyBoard
 {
-   
+    public class KeyboardSimulator
+    {
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);
+
+        private const int KEYEVENTF_KEYUP = 0x0002;
+
+        public static void SendString(string str)
+        {
+            foreach (char c in str)
+            {
+                byte vk = (byte)VkKeyScan(c);
+                keybd_event(vk, 0, 0, 0);
+                System.Threading.Thread.Sleep(1);
+                //keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern short VkKeyScan(char ch);
+    }
+
+
     class Program
     {
         #region MyConfigClass
@@ -58,6 +83,7 @@ namespace COM2KeyBoard
         [STAThread]
         static void Main(string[] args)
         {
+            
             bool createdNew;
             Mutex mutex = new Mutex(true, "COM2KeyBoard", out createdNew);
 
@@ -77,6 +103,7 @@ namespace COM2KeyBoard
                 Environment.Exit(0);
             }
             Console.WriteLine($"{myConfigClass.Scanner01_COMPort} 開啟成功!!");
+            var sim = new InputSimulator();
             while (true)
             {
                 string text = mySerialPort.ReadString();
@@ -91,9 +118,13 @@ namespace COM2KeyBoard
                         Console.WriteLine($"接收到字串: {text}");
                         try
                         {
+                            //Clipboard.SetText(text);
+                            sim.Keyboard.TextEntry($"{text}\r\n");
+                            sim.Keyboard.KeyPress(VirtualKeyCode.RETURN);
+                            //KeyboardSimulator.SendString(text);
                             //SendKeys.SendWait(text);
-                            Clipboard.SetText(text);
-                            SendKeys.SendWait("^V");
+                            //Clipboard.SetText(text);
+                            //SendKeys.SendWait("^V");
                             Console.WriteLine($"發送鍵盤模擬: {text}");
                         }
                         catch (Exception e)
